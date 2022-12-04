@@ -33,6 +33,12 @@
             case 2:
                 DayTwo(input);
                 break;
+            case 3:
+                DayThree(input);
+                break;
+            case 4:
+                DayFour(input);
+                break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
         }
@@ -184,5 +190,80 @@
         }
         Console.WriteLine($"Total score case 1: {score1}");
         Console.WriteLine($"Total score case 2: {score2}");
+    }
+
+    static void DayThree(string input)
+    {
+        int GetPriority(char c)
+        {
+            int value = (int)c;
+            if (value >= 97 && value < 97 + 26)
+                return value - 96;
+            else if (value >= 65 && value < 65 + 26)
+                return value - 38;
+            else
+                throw new ArgumentException("Illegal char!");
+        }
+        string[] lines = input.Split('\n');
+        int sumPriority = 0;
+        int sumBadgePriority = 0;
+        List<string> group = new();
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            int halfIndex = line.Length / 2;
+            string firstHalf = line.Remove(halfIndex);
+            string secondHalf = line.Substring(halfIndex);
+            char commonItem = firstHalf.Intersect(secondHalf).First();
+            int priority = GetPriority(commonItem);
+            Console.WriteLine($"{commonItem} ({priority})");
+            sumPriority += priority;
+            group.Add(line);
+            if (group.Count == 3)
+            {
+                char badge = group[0].Intersect(group[1]).Intersect(group[2]).First();
+                int badgePriority = GetPriority(badge);
+                Console.WriteLine($"Badge: {badge} ({badgePriority})");
+                sumBadgePriority += badgePriority;
+                group.Clear();
+            }
+        }
+        Console.WriteLine($"Sum of priorities: {sumPriority}");
+        Console.WriteLine($"Sum of badge priorities: {sumBadgePriority}");
+    }
+
+    static void DayFour(string input)
+    {
+        (int, int) GetRange(string rangeStr)
+        {
+            string[] split = rangeStr.Split('-');
+            return (int.Parse(split[0]), int.Parse(split[1]));
+        }
+        bool Contains((int, int) range, (int, int) other)
+        {
+            return range.Item1 <= other.Item1 && range.Item2 >= other.Item2;
+        }
+        bool Overlaps((int, int) range, (int, int) other)
+        {
+            return (range.Item1 >= other.Item1 && range.Item1 <= other.Item2)
+                || (range.Item2 >= other.Item1 && range.Item2 <= other.Item2);
+        }
+        int fullyContained = 0;
+        int overlapping = 0;
+        foreach (string line in input.Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            string[] split = line.Split(',');
+            (int, int) firstRange = GetRange(split[0]);
+            (int, int) secondRange = GetRange(split[1]);
+            if (Contains(firstRange, secondRange)
+                || Contains(secondRange, firstRange))
+                fullyContained++;
+            if (Overlaps(firstRange, secondRange)
+                || Overlaps(secondRange, firstRange))
+                overlapping++;
+        }
+        Console.WriteLine($"Number of fully redundant elves: {fullyContained}");
+        Console.WriteLine($"Number of overlapping assignment pairs: {overlapping}");
     }
 }
