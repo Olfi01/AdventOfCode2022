@@ -1,4 +1,7 @@
-﻿class Program
+﻿using AdventOfCode;
+using System.Text.RegularExpressions;
+
+class Program
 {
     static async Task Main()
     {
@@ -38,6 +41,9 @@
                 break;
             case 4:
                 DayFour(input);
+                break;
+            case 5:
+                DayFive(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -265,5 +271,74 @@
         }
         Console.WriteLine($"Number of fully redundant elves: {fullyContained}");
         Console.WriteLine($"Number of overlapping assignment pairs: {overlapping}");
+    }
+
+    static void DayFive(string input)
+    {
+        string[] blocks = input.Split("\n\n");
+        string[] position = blocks[0].Split('\n');
+        string[] actions = blocks[1].Split('\n');
+        List<Stack<string>> stacks = new();
+        Regex cratePattern = new(@"\[(?<crate>.)\]");
+        foreach (string line in position.Reverse())
+        {
+            string remaining = line;
+            int i = 0;
+            while (remaining.Length > 4)
+            {
+                string crate = remaining[..3];
+                while (stacks.Count <= i) stacks.Add(new());
+                Match match = cratePattern.Match(crate);
+                if (match.Success) stacks[i].Push(match.Groups["crate"].Value);
+                remaining = remaining[4..];
+                i++;
+            }
+            while (stacks.Count <= i) stacks.Add(new());
+            Match match2 = cratePattern.Match(remaining);
+            if (match2.Success) stacks[i].Push(match2.Groups["crate"].Value);
+        }
+
+        List<Stack<string>> stacks2 = new();
+        foreach (Stack<string> stack in stacks) stacks2.Add(stack.Copy());
+
+        Regex actionRegex = new(
+            @"move (?<n>\d+) from (?<source>\d+) to (?<target>\d+)");
+        foreach (string action in actions)
+        {
+            if (string.IsNullOrWhiteSpace(action)) continue;
+            Match match = actionRegex.Match(action);
+            int n = int.Parse(match.Groups["n"].Value);
+            int source = int.Parse(match.Groups["source"].Value) - 1;
+            int target = int.Parse(match.Groups["target"].Value) - 1;
+            // CraneMover 9000
+            for (int i = 0; i < n; i++)
+            {
+                stacks[target].Push(stacks[source].Pop());
+            }
+
+            // CraneMover 8001
+            Stack<string> temp = new();
+            for (int i = 0; i < n; i++)
+            {
+                temp.Push(stacks2[source].Pop());
+            }
+            while (temp.TryPop(out string? crate))
+            {
+                stacks2[target].Push(crate);
+            }
+        }
+        Console.Write("CraneMover 9000: ");
+        foreach (Stack<string> stack in stacks)
+        {
+            Console.Write(stack.Peek());
+        }
+        Console.WriteLine();
+        Console.Write("CraneMover 8001 " +
+            "(mocks behavior of CraneMover 9001 inefficiently): ");
+        foreach (Stack<string> stack in stacks2)
+        {
+            Console.Write(stack.Peek());
+        }
+        Console.WriteLine();
     }
 }
