@@ -45,6 +45,9 @@ class Program
             case 5:
                 DayFive(input);
                 break;
+            case 6:
+                DaySix(input);
+                break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
         }
@@ -340,5 +343,28 @@ class Program
             Console.Write(stack.Peek());
         }
         Console.WriteLine();
+    }
+
+    static void DaySix(string input)
+    {
+        char[] buffer = new char[4];
+        char[] messageBuffer = new char[14];
+        int i = 0;
+        bool packetMarkerFound = false;
+        foreach (char c in input)
+        {
+            buffer[i++ % 4] = c;
+            messageBuffer[(i - 1) % 14] = c;
+            if (i > 3 && buffer.Distinct().Count() == 4 && !packetMarkerFound)
+            {
+                Console.WriteLine($"Packet marker found at {i}.");
+                packetMarkerFound = true;
+            }
+            if (i > 13 && messageBuffer.Distinct().Count() == 14)
+            {
+                Console.WriteLine($"Message marker found at {i}.");
+                break;
+            }
+        }
     }
 }
