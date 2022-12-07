@@ -1,5 +1,7 @@
 ﻿using AdventOfCode;
+using AdventOfCode.DaySeven;
 using System.Text.RegularExpressions;
+using Directory = AdventOfCode.DaySeven.Directory;
 
 class Program
 {
@@ -47,6 +49,9 @@ class Program
                 break;
             case 6:
                 DaySix(input);
+                break;
+            case 7:
+                DaySeven(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -366,5 +371,90 @@ class Program
                 break;
             }
         }
+    }
+
+    static void DaySeven(string input)
+    {
+        string[] lines = input.Split('\n');
+        Directory rootDir = Directory.CreateRootDir();
+        Directory currentDir = rootDir;
+        Regex fileAndSize = new(@"^(?<size>\d+) (?<name>.+)$");
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (line.StartsWith("$ cd "))
+            {
+                string path = line[5..];
+                if (path == "/") currentDir = rootDir;
+                else if (path == "..")
+                {
+                    currentDir = currentDir.Parent;
+                }
+                else
+                {
+                    currentDir = currentDir.Content[path].Directory 
+                        ?? throw new Exception();
+                }
+            } else if (line.StartsWith("$ ls"))
+            {
+                continue;
+            } else if (line.StartsWith("dir "))
+            {
+                string path = line[4..];
+                if (!currentDir.Content.ContainsKey(path))
+                    currentDir.Content[path] = new(new Directory(currentDir));
+            } else
+            {
+                Match match = fileAndSize.Match(line);
+                string fileName = match.Groups["name"].Value;
+                long fileSize = long.Parse(match.Groups["size"].Value);
+                currentDir.Content[fileName] = new(fileSize);
+            }
+        }
+        Dictionary<Directory, long> dirSizes = new();
+        long CalculateSize(Directory dir)
+        {
+            long sum = 0;
+            foreach (var kvp in dir.Content)
+            {
+                if (kvp.Value?.IsFile() ?? false)
+                {
+                    long fileSize = kvp.Value?.File ?? throw new Exception();
+                    sum += fileSize;
+                    Console.WriteLine($"File {kvp.Key} ({fileSize})");
+                }
+                else
+                {
+                    Console.WriteLine($"Directory {kvp.Key}");
+                    long dirSize = CalculateSize(kvp.Value?.Directory ?? throw new Exception());
+                    dirSizes[kvp.Value?.Directory ?? throw new Exception()] = dirSize;
+                    sum += dirSize;
+                    Console.WriteLine($"End of directory {kvp.Key} ({dirSize})");
+                }
+            }
+            return sum;
+        }
+        Console.WriteLine("Directory /");
+        dirSizes[rootDir] = CalculateSize(rootDir);
+        Console.WriteLine($"End of directory / ({dirSizes[rootDir]})");
+        long sum = 0;
+        foreach (var kvp in dirSizes)
+        {
+            if (kvp.Value <= 100000) sum += kvp.Value;
+        }
+        Console.WriteLine($"Sum of directory sizes below 100000: {sum}");
+        Console.WriteLine($"Size of root dir: {dirSizes[rootDir]}");
+        long spaceAvailable = 70000000 - dirSizes[rootDir];
+        Console.WriteLine($"Space available: {spaceAvailable}");
+        long spaceMissing = 30000000 - spaceAvailable;
+        Console.WriteLine($"Space missing: {spaceMissing}");
+        KeyValuePair<Directory, long> directoryToDelete = 
+            dirSizes
+            .Where(kvp => kvp.Value >= spaceMissing)
+            .OrderBy(kvp => kvp.Value)
+            .First();
+        Console.WriteLine($"Directory to delete: " +
+            $"{directoryToDelete.Key.Parent.Content.First(x => x.Value.Directory == directoryToDelete.Key).Key} " +
+            $"({directoryToDelete.Value})");
     }
 }
