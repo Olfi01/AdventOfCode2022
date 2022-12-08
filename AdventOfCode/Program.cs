@@ -53,6 +53,9 @@ class Program
             case 7:
                 DaySeven(input);
                 break;
+            case 8:
+                DayEight(input);
+                break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
         }
@@ -456,5 +459,109 @@ class Program
         Console.WriteLine($"Directory to delete: " +
             $"{directoryToDelete.Key.Parent.Content.First(x => x.Value.Directory == directoryToDelete.Key).Key} " +
             $"({directoryToDelete.Value})");
+    }
+
+    static void DayEight(string input)
+    {
+        string[] lines = input.Split('\n');
+        int rows = lines
+            .Where(x => !string.IsNullOrWhiteSpace(x)).Count();
+        int cols = lines[0].Length;
+        int[,] grid = new int[cols, rows];
+        int x = 0, y = 0;
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            foreach (char c in line)
+            {
+                grid[x, y] = (int)char.GetNumericValue(c);
+                x++;
+            }
+            x = 0;
+            y++;
+        }
+        int visibleTrees = 0;
+        int[,] viewingScores = new int[cols, rows];
+        for (x = 0; x < cols; x++)
+        {
+            for (y = 0; y < rows; y++)
+            {
+                int thisHeight = grid[x, y];
+                bool visible = true;
+                bool visibleIncremented = false;
+                int viewingRangeXm = 0;
+                for (int x0 = x - 1; x0 >= 0; x0--)
+                {
+                    viewingRangeXm++;
+                    if (grid[x0, y] >= thisHeight)
+                    {
+                        visible = false;
+                        break;
+                    }
+                }
+                if (!visibleIncremented && visible)
+                {
+                    visibleTrees++;
+                    visibleIncremented = true;
+                }
+                visible = true;
+                int viewingRangeXp = 0;
+                for (int x0 = x + 1; x0 < cols; x0++)
+                {
+                    viewingRangeXp++;
+                    if (grid[x0, y] >= thisHeight)
+                    {
+                        visible = false;
+                        break;
+                    }
+                }
+                if (!visibleIncremented && visible)
+                {
+                    visibleTrees++;
+                    visibleIncremented = true;
+                }
+                visible = true;
+                int viewingRangeYm = 0;
+                for (int y0 = y - 1; y0 >= 0; y0--)
+                {
+                    viewingRangeYm++;
+                    if (grid[x, y0] >= thisHeight)
+                    {
+                        visible = false;
+                        break;
+                    }
+                }
+                if (!visibleIncremented && visible)
+                {
+                    visibleTrees++;
+                    visibleIncremented = true;
+                }
+                visible = true;
+                int viewingRangeYp = 0;
+                for (int y0 = y + 1; y0 < rows; y0++)
+                {
+                    viewingRangeYp++;
+                    if (grid[x, y0] >= thisHeight)
+                    {
+                        visible = false;
+                        break;
+                    }
+                }
+                if (!visibleIncremented && visible)
+                {
+                    visibleTrees++;
+                    visibleIncremented = true;
+                }
+                viewingScores[x, y] 
+                    = viewingRangeXm * viewingRangeXp * viewingRangeYm * viewingRangeYp;
+            }
+        }
+        int viewHighscore = 0;
+        foreach (int score in viewingScores)
+        {
+            if (score > viewHighscore) viewHighscore = score;
+        }
+        Console.WriteLine($"Visible trees: {visibleTrees}");
+        Console.WriteLine($"Highest viewing score: {viewHighscore}");
     }
 }
