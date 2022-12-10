@@ -12,5 +12,10 @@ namespace AdventOfCode
         {
             return new(new Stack<T>(stack));
         }
+
+        public static (T, T) Copy<T>(this (T, T) tuple)
+        {
+            return (tuple.Item1, tuple.Item2);
+        }
     }
 }

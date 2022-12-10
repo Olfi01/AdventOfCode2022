@@ -1,4 +1,5 @@
 ﻿using AdventOfCode;
+using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
 using System.Text.RegularExpressions;
 using Directory = AdventOfCode.DaySeven.Directory;
@@ -55,6 +56,12 @@ class Program
                 break;
             case 8:
                 DayEight(input);
+                break;
+            case 9:
+                DayNine(input);
+                break;
+            case 10:
+                DayTen(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -563,5 +570,132 @@ class Program
         }
         Console.WriteLine($"Visible trees: {visibleTrees}");
         Console.WriteLine($"Highest viewing score: {viewHighscore}");
+    }
+
+    static void DayNine(string input)
+    {
+        string[] lines = input.Split('\n');
+        Knot tail = new(0, 0);
+        Knot head = new(0, 0) { Next = tail };
+        Knot tail2 = new(0, 0);
+        Knot eight = new(0, 0) { Next = tail2 };
+        Knot seven = new(0, 0) { Next = eight };
+        Knot six = new(0, 0) { Next = seven };
+        Knot five = new(0, 0) { Next = six };
+        Knot four = new(0, 0) { Next = five };
+        Knot three = new(0, 0) { Next = four };
+        Knot two = new(0, 0) { Next = three };
+        Knot one = new(0, 0) { Next = two };
+        Knot head2 = new(0, 0) { Next = one };
+        HashSet<(int, int)> visited = new()
+        {
+            (tail.X, tail.Y)
+        };
+        HashSet<(int, int)> visited2 = new()
+        {
+            (tail2.X, tail2.Y)
+        };
+        static void FollowKnot(Knot next, Knot knot)
+        {
+            if (Math.Abs(knot.X - next.X) >= 2 || Math.Abs(knot.Y - next.Y) >= 2)
+            {
+                if (knot.X == next.X)
+                {
+                    if (knot.Y > next.Y) next.Y++;
+                    else next.Y--;
+                }
+                else if (knot.Y == next.Y)
+                {
+                    if (knot.X > next.X) next.X++;
+                    else next.X--;
+                }
+                else
+                {
+                    if (knot.X > next.X) next.X++;
+                    else next.X--;
+                    if (knot.Y > next.Y) next.Y++;
+                    else next.Y--;
+                }
+            }
+            if (next.Next != null) FollowKnot(next.Next, next);
+        }
+        static void MoveKnot(string direction, Knot knot)
+        {
+            switch(direction)
+            {
+                case "R":
+                    knot.X++;
+                    break;
+                case "L":
+                    knot.X--;
+                    break;
+                case "U":
+                    knot.Y++;
+                    break;
+                case "D":
+                    knot.Y--;
+                    break;
+            }
+            if (knot.Next == null) return;
+            Knot next = knot.Next;
+            FollowKnot(next, knot);
+        }
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            string[] split = line.Split(" ");
+            string direction = split[0];
+            int n = int.Parse(split[1]);
+            for (int i = 0; i < n; i++)
+            {
+                MoveKnot(direction, head);
+                visited.Add((tail.X, tail.Y));
+                MoveKnot(direction, head2);
+                visited2.Add((tail2.X, tail2.Y));
+            }
+        }
+        Console.WriteLine($"Short rope tail visited {visited.Count} fields.");
+        Console.WriteLine($"Long rope tail visited {visited2.Count} fields.");
+    }
+
+    static void DayTen(string input)
+    {
+        string[] lines = input.Split('\n');
+        int x = 1;
+        int cycle = 0;
+        HashSet<int> recordCycles = new() { 20, 60, 100, 140, 180, 220 };
+        Dictionary<int, int> records = new();
+        void IncrementCycle()
+        {
+            int cpos = cycle % 40;
+            char c = Math.Abs(cpos - x) <= 1 ? '#' : '.';
+            if (cpos == 39)
+            {
+                Console.WriteLine(c);
+            }
+            else
+            {
+                Console.Write(c);
+            }
+            cycle++;
+            if (recordCycles.Contains(cycle)) records.Add(cycle, x);
+        }
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (line == "noop")
+            {
+                IncrementCycle();
+            }
+            else
+            {
+                int add = int.Parse(line.Split(" ")[1]);
+                IncrementCycle();
+                IncrementCycle();
+                x += add;
+            }
+        }
+        int sumSignalStrengths = records.Select(kvp => kvp.Key * kvp.Value).Sum();
+        Console.WriteLine($"Sum of the 6 signal strengths: {sumSignalStrengths}");
     }
 }
