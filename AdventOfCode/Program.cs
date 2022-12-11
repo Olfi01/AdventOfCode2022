@@ -1,6 +1,8 @@
 ﻿using AdventOfCode;
+using AdventOfCode.DayEleven;
 using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
+using NCalc;
 using System.Text.RegularExpressions;
 using Directory = AdventOfCode.DaySeven.Directory;
 
@@ -31,7 +33,7 @@ class Program
 
     static void Solve(int day, string input)
     {
-        switch(day)
+        switch (day)
         {
             case 1:
                 DayOne(input);
@@ -62,6 +64,9 @@ class Program
                 break;
             case 10:
                 DayTen(input);
+                break;
+            case 11:
+                DayEleven(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -118,7 +123,7 @@ class Program
         int CalculateScoreCase1(string opponent, string me)
         {
             int score = 0;
-            switch((opponent, me))
+            switch ((opponent, me))
             {
                 case ("A", "X"):
                 case ("B", "Y"):
@@ -139,7 +144,7 @@ class Program
                     score += 0;
                     break;
             }
-            switch(me)
+            switch (me)
             {
                 case "X":
                     Console.WriteLine("with rock.");
@@ -402,18 +407,21 @@ class Program
                 }
                 else
                 {
-                    currentDir = currentDir.Content[path].Directory 
+                    currentDir = currentDir.Content[path].Directory
                         ?? throw new Exception();
                 }
-            } else if (line.StartsWith("$ ls"))
+            }
+            else if (line.StartsWith("$ ls"))
             {
                 continue;
-            } else if (line.StartsWith("dir "))
+            }
+            else if (line.StartsWith("dir "))
             {
                 string path = line[4..];
                 if (!currentDir.Content.ContainsKey(path))
                     currentDir.Content[path] = new(new Directory(currentDir));
-            } else
+            }
+            else
             {
                 Match match = fileAndSize.Match(line);
                 string fileName = match.Groups["name"].Value;
@@ -458,7 +466,7 @@ class Program
         Console.WriteLine($"Space available: {spaceAvailable}");
         long spaceMissing = 30000000 - spaceAvailable;
         Console.WriteLine($"Space missing: {spaceMissing}");
-        KeyValuePair<Directory, long> directoryToDelete = 
+        KeyValuePair<Directory, long> directoryToDelete =
             dirSizes
             .Where(kvp => kvp.Value >= spaceMissing)
             .OrderBy(kvp => kvp.Value)
@@ -559,7 +567,7 @@ class Program
                     visibleTrees++;
                     visibleIncremented = true;
                 }
-                viewingScores[x, y] 
+                viewingScores[x, y]
                     = viewingRangeXm * viewingRangeXp * viewingRangeYm * viewingRangeYp;
             }
         }
@@ -621,7 +629,7 @@ class Program
         }
         static void MoveKnot(string direction, Knot knot)
         {
-            switch(direction)
+            switch (direction)
             {
                 case "R":
                     knot.X++;
@@ -697,5 +705,86 @@ class Program
         }
         int sumSignalStrengths = records.Select(kvp => kvp.Key * kvp.Value).Sum();
         Console.WriteLine($"Sum of the 6 signal strengths: {sumSignalStrengths}");
+    }
+
+    static void DayEleven(string input)
+    {
+        static void PartOne(string input)
+        {
+            string[] monkeyStrings = input.Split("\n\n");
+            Dictionary<int, Monkey> monkeys = new();
+
+            foreach (string monkeyString in monkeyStrings)
+            {
+                Monkey monkey = new Monkey(monkeyString);
+                monkeys.Add(monkey.Id, monkey);
+            }
+            long commonDenom = monkeys.Select(x => x.Value.TestDivisibleBy).Aggregate((x, y) => x * y);
+            for (int round = 0; round < 20; round++)
+            {
+                foreach (Monkey monkey in monkeys.Values.OrderBy(x => x.Id))
+                {
+                    foreach (int item in monkey.Items)
+                    {
+                        //Expression exp = new(monkey.Operation.Replace("old", item.ToString()));
+                        //int worry = (int)exp.Evaluate();
+                        long worry = monkey.PerformOperation(item) % commonDenom;
+                        monkey.TotalInspections++;
+                        worry /= 3;
+                        if (worry % monkey.TestDivisibleBy == 0) monkeys[monkey.IfTrue].Items.Add(worry);
+                        else monkeys[monkey.IfFalse].Items.Add(worry);
+                    }
+                    monkey.Items.Clear();
+                }
+            }
+            long[] meddlers = monkeys.OrderByDescending(x => x.Value.TotalInspections)
+                .Select(x => x.Value.TotalInspections).Take(2).ToArray();
+            Console.WriteLine($"Level of monkey business: {meddlers[0] * meddlers[1]}");
+        }
+        static void PartTwo(string input)
+        {
+            var monkeys = input.Split('\n')
+                .Where(l => !string.IsNullOrWhiteSpace(l)).Chunk(6)
+                .Select(l => new Monkey2(
+                            new Queue<long>(l[1][18..].Split(',').Select(long.Parse)),
+                            l[2][23..][0] switch
+                            {
+                                '*' => Op.Multiply,
+                                '+' => Op.Add,
+                                _ => throw new Exception($"unknown operation")
+                            },
+                            l[2][25..] == "old" ? null : int.Parse(l[2][25..]),
+                            int.Parse(l[3][21..]),
+                            int.Parse(l[4][28..]), int.Parse(l[5][29..]))
+                 ).ToList();
+
+            var divisorLimit = monkeys.Aggregate(1, (c, m) => c * m.test);
+
+            for (var round = 0; round < 10000; ++round)
+            {
+                foreach (var monkey in monkeys)
+                {
+                    while (monkey.items.Any())
+                    {
+                        monkey.Inspections++;
+                        var worryLevel = monkey.items.Dequeue();
+                        worryLevel = monkey.operation switch
+                        {
+                            Op.Add => worryLevel + (monkey.modifier ?? worryLevel),
+                            Op.Multiply => worryLevel * (monkey.modifier ?? worryLevel),
+                            _ => throw new ArgumentOutOfRangeException()
+                        };
+                        worryLevel %= divisorLimit;
+                        var targetMonkey = worryLevel % monkey.test == 0 ? monkey.trueMonkey : monkey.falseMonkey;
+                        monkeys[targetMonkey].items.Enqueue(worryLevel);
+                    }
+                }
+            }
+
+            monkeys.Sort((a, b) => b.Inspections.CompareTo(a.Inspections));
+            Console.WriteLine($"Result {monkeys[0].Inspections * monkeys[1].Inspections}");
+        }
+        PartOne(input);
+        PartTwo(input);
     }
 }
