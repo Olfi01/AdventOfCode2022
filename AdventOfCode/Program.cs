@@ -2,6 +2,7 @@
 using AdventOfCode.DayEleven;
 using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
+using AdventOfCode.DayTwelve;
 using NCalc;
 using System.Text.RegularExpressions;
 using Directory = AdventOfCode.DaySeven.Directory;
@@ -67,6 +68,9 @@ class Program
                 break;
             case 11:
                 DayEleven(input);
+                break;
+            case 12:
+                DayTwelve(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -784,6 +788,165 @@ class Program
             monkeys.Sort((a, b) => b.Inspections.CompareTo(a.Inspections));
             Console.WriteLine($"Result {monkeys[0].Inspections * monkeys[1].Inspections}");
         }
+        PartOne(input);
+        PartTwo(input);
+    }
+
+    static void DayTwelve(string input)
+    {
+        void PartOne(string input)
+        {
+            string[] lines = input.Split('\n').Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+            DijkstraNode[,] grid = new DijkstraNode[lines[0].Length, lines.Length];
+            DijkstraNode? startNode = null;
+            DijkstraNode? endNode = null;
+            for (int x = 0; x < lines[0].Length; x++)
+            {
+                for (int y = 0; y < lines.Length; y++)
+                {
+                    char c = lines[y][x];
+                    DijkstraNode node;
+                    if (c == 'S')
+                    {
+                        node = new(x, y, 'a') { Distance = 0 };
+                        startNode = node;
+                    }
+                    else if (c == 'E')
+                    {
+                        node = new(x, y, 'z');
+                        endNode = node;
+                    }
+                    else node = new(x, y, c);
+                    grid[x, y] = node;
+                }
+            }
+            if (startNode == null || endNode == null) return;
+            (int x, int y)[] neighborDeltas = { (-1, 0), (0, -1), (1, 0), (0, 1) };
+            List<DijkstraNode> GetNeighborNodes(DijkstraNode node)
+            {
+                List<DijkstraNode> neighbors = new();
+                foreach (var (xd, yd) in neighborDeltas)
+                {
+                    int x0 = node.X + xd;
+                    int y0 = node.Y + yd;
+                    if (x0 < grid.GetLength(0) && y0 < grid.GetLength(1) && x0 >= 0 && y0 >= 0)
+                    {
+                        DijkstraNode neighbor = grid[x0, y0];
+                        if (!neighbor.Visited && neighbor.Elevation <= node.Elevation + 1)
+                            neighbors.Add(neighbor);
+                    }
+                }
+                return neighbors;
+            }
+            DijkstraNode GetClosestUnvisitedNode()
+            {
+                DijkstraNode? closest = null;
+                foreach (DijkstraNode node in grid)
+                {
+                    if (node.Visited) continue;
+                    if (closest == null) closest = node;
+                    else if (closest.Distance > node.Distance) closest = node;
+                }
+                return closest ?? throw new NotImplementedException();
+            }
+            DijkstraNode currentNode = startNode;
+            while (currentNode != endNode)
+            {
+                currentNode.Visited = true;
+                List<DijkstraNode> neighbors = GetNeighborNodes(currentNode);
+                foreach (DijkstraNode next in neighbors)
+                {
+                    int newDistance = currentNode.Distance + 1;
+                    if (newDistance < next.Distance)
+                    {
+                        next.Distance = newDistance;
+                        next.Previous = currentNode;
+                    }
+                }
+                currentNode = GetClosestUnvisitedNode();
+            }
+            int distance = 0;
+            while (currentNode != startNode)
+            {
+                distance++;
+                currentNode = currentNode.Previous ?? throw new NotImplementedException();
+            }
+            Console.WriteLine($"Shortest path has {distance} steps.");
+        }
+
+        void PartTwo(string input)
+        {
+            string[] lines = input.Split('\n').Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+            DijkstraNode[,] grid = new DijkstraNode[lines[0].Length, lines.Length];
+            DijkstraNode? startNode = null;
+            for (int x = 0; x < lines[0].Length; x++)
+            {
+                for (int y = 0; y < lines.Length; y++)
+                {
+                    char c = lines[y][x];
+                    DijkstraNode node;
+                    if (c == 'S')
+                    {
+                        node = new(x, y, 'a');
+                    }
+                    else if (c == 'E')
+                    {
+                        node = new(x, y, 'z') { Distance = 0 };
+                        startNode = node;
+                    }
+                    else node = new(x, y, c);
+                    grid[x, y] = node;
+                }
+            }
+            if (startNode == null) return;
+            (int x, int y)[] neighborDeltas = { (-1, 0), (0, -1), (1, 0), (0, 1) };
+            List<DijkstraNode> GetNeighborNodes(DijkstraNode node)
+            {
+                List<DijkstraNode> neighbors = new();
+                foreach (var (xd, yd) in neighborDeltas)
+                {
+                    int x0 = node.X + xd;
+                    int y0 = node.Y + yd;
+                    if (x0 < grid.GetLength(0) && y0 < grid.GetLength(1) && x0 >= 0 && y0 >= 0)
+                    {
+                        DijkstraNode neighbor = grid[x0, y0];
+                        if (!neighbor.Visited && neighbor.Elevation >= node.Elevation - 1)
+                            neighbors.Add(neighbor);
+                    }
+                }
+                return neighbors;
+            }
+            DijkstraNode GetClosestUnvisitedNode()
+            {
+                DijkstraNode? closest = null;
+                foreach (DijkstraNode node in grid)
+                {
+                    if (node.Visited) continue;
+                    if (closest == null) closest = node;
+                    else if (closest.Distance > node.Distance) closest = node;
+                }
+                return closest ?? throw new NotImplementedException();
+            }
+            DijkstraNode currentNode = startNode;
+            while (grid.Cast<DijkstraNode>().Any(x => !x.Visited))
+            {
+                currentNode.Visited = true;
+                List<DijkstraNode> neighbors = GetNeighborNodes(currentNode);
+                foreach (DijkstraNode next in neighbors)
+                {
+                    int newDistance = currentNode.Distance + 1;
+                    if (newDistance < next.Distance)
+                    {
+                        next.Distance = newDistance;
+                        next.Previous = currentNode;
+                    }
+                }
+                if (grid.Cast<DijkstraNode>().Any(x => !x.Visited)) currentNode = GetClosestUnvisitedNode();
+            }
+            int distance = grid.Cast<DijkstraNode>().Where(x => x.Elevation == 'a').OrderBy(x => x.Distance).First().Distance;
+            Console.WriteLine($"Shortest scenic path has {distance} steps.");
+        }
+
         PartOne(input);
         PartTwo(input);
     }
