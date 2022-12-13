@@ -2,6 +2,7 @@
 using AdventOfCode.DayEleven;
 using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
+using AdventOfCode.DayThirteen;
 using AdventOfCode.DayTwelve;
 using NCalc;
 using System.Text.RegularExpressions;
@@ -71,6 +72,9 @@ class Program
                 break;
             case 12:
                 DayTwelve(input);
+                break;
+            case 13:
+                DayThirteen(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -949,5 +953,34 @@ class Program
 
         PartOne(input);
         PartTwo(input);
+    }
+
+    static void DayThirteen(string input)
+    {
+        string[] pairs = input.Split("\n\n");
+        int sumIdx = 0;
+        List<Packet> packets = new();
+        for (int i = 0; i < pairs.Length; i++)
+        {
+            string pair = pairs[i];
+            if (string.IsNullOrWhiteSpace(pair)) continue;
+            string[] lines = pair.Split('\n');
+            Packet left = new(lines[0]);
+            Packet right = new(lines[1]);
+            if (left < right)
+            {
+                sumIdx += i + 1;
+            }
+            packets.Add(left);
+            packets.Add(right);
+        }
+        Console.WriteLine($"Sum of indices: {sumIdx}");
+        Packet divider0 = new("[[2]]"), divider1 = new("[[6]]");
+        packets.Add(divider0);
+        packets.Add(divider1);
+        packets.Sort();
+        int i0 = packets.IndexOf(divider0) + 1, i1 = packets.IndexOf(divider1) + 1;
+        Console.WriteLine($"Index of first divider: {i0}, Index of second divider: {i1}");
+        Console.WriteLine($"Decoder key: {i0 * i1}");
     }
 }
