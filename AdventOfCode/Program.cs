@@ -1,10 +1,12 @@
 ﻿using AdventOfCode;
 using AdventOfCode.DayEleven;
+using AdventOfCode.DayFourteen;
 using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
 using AdventOfCode.DayThirteen;
 using AdventOfCode.DayTwelve;
 using NCalc;
+using System.Text;
 using System.Text.RegularExpressions;
 using Directory = AdventOfCode.DaySeven.Directory;
 
@@ -75,6 +77,9 @@ class Program
                 break;
             case 13:
                 DayThirteen(input);
+                break;
+            case 14:
+                DayFourteen(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -982,5 +987,106 @@ class Program
         int i0 = packets.IndexOf(divider0) + 1, i1 = packets.IndexOf(divider1) + 1;
         Console.WriteLine($"Index of first divider: {i0}, Index of second divider: {i1}");
         Console.WriteLine($"Decoder key: {i0 * i1}");
+    }
+
+    static void DayFourteen(string input)
+    {
+        static (int x, int y) ExtractPoint(string point)
+        {
+            string[] coords = point.Split(',');
+            return (int.Parse(coords[0]), int.Parse(coords[1]));
+        }
+        TileType[,] grid = new TileType[600, 200];
+        TileType[,] grid1 = new TileType[800, 200];
+        int maxY = 0;
+        string[] lines = input.Split('\n');
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            string[] points = line.Split(" -> ");
+            (int x, int y) previous = ExtractPoint(points[0]);
+            for (int i = 1; i < points.Length; i++)
+            {
+                (int x, int y) current = ExtractPoint(points[i]);
+                for (int x = Math.Min(previous.x, current.x); x <= Math.Max(previous.x, current.x); x++)
+                {
+                    for (int y = Math.Min(previous.y, current.y); y <= Math.Max(previous.y, current.y); y++)
+                    {
+                        grid[x, y] = TileType.Rock;
+                        grid1[x, y] = TileType.Rock;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+                previous = (current.x, current.y);
+            }
+        }
+        for (int x = 0; x < grid1.GetLength(0); x++)
+        {
+            grid1[x, maxY + 2] = TileType.Rock;
+        }
+        (int x, int y) sand = (500, 0);
+        int cameToRest = 0;
+        while (true)
+        {
+            if (sand.y + 1 >= grid.GetLength(1)) break;
+            if (grid[sand.x, sand.y + 1] == TileType.Air)
+            {
+                sand.y++;
+                continue;
+            }
+            else if (grid[sand.x - 1, sand.y + 1] == TileType.Air)
+            {
+                sand.x--;
+                sand.y++;
+                continue;
+            }
+            else if (grid[sand.x + 1, sand.y + 1] == TileType.Air)
+            {
+                sand.x++;
+                sand.y++;
+                continue;
+            }
+            else
+            {
+                grid[sand.x, sand.y] = TileType.Sand;
+                cameToRest++;
+                if (sand.x == 500 && sand.y == 0) break;
+                sand = (500, 0);
+                continue;
+            }
+        }
+        Console.WriteLine($"{cameToRest} units of sand came to rest without floor.");
+        int cameToRest1 = 0;
+        sand = (500, 0);
+        while (true)
+        {
+            if (sand.y + 1 >= grid1.GetLength(1)) break;
+            if (grid1[sand.x, sand.y + 1] == TileType.Air)
+            {
+                sand.y++;
+                continue;
+            }
+            else if (grid1[sand.x - 1, sand.y + 1] == TileType.Air)
+            {
+                sand.x--;
+                sand.y++;
+                continue;
+            }
+            else if (grid1[sand.x + 1, sand.y + 1] == TileType.Air)
+            {
+                sand.x++;
+                sand.y++;
+                continue;
+            }
+            else
+            {
+                grid1[sand.x, sand.y] = TileType.Sand;
+                cameToRest1++;
+                if (sand.x == 500 && sand.y == 0) break;
+                sand = (500, 0);
+                continue;
+            }
+        }
+        Console.WriteLine($"{cameToRest1} units of sand came to rest with floor.");
     }
 }
