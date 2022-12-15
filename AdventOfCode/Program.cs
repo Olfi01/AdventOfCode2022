@@ -1,5 +1,6 @@
 ﻿using AdventOfCode;
 using AdventOfCode.DayEleven;
+using AdventOfCode.DayFifteen;
 using AdventOfCode.DayFourteen;
 using AdventOfCode.DayNine;
 using AdventOfCode.DaySeven;
@@ -80,6 +81,9 @@ class Program
                 break;
             case 14:
                 DayFourteen(input);
+                break;
+            case 15:
+                DayFifteen(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -1088,5 +1092,58 @@ class Program
             }
         }
         Console.WriteLine($"{cameToRest1} units of sand came to rest with floor.");
+    }
+
+    static void DayFifteen(string input)
+    {
+        static int DistanceToSensor(int x, int y, SensorAndBeacon s)
+        {
+            return Math.Abs(s.SensorX - x) + Math.Abs(s.SensorY - y);
+        }
+        string[] lines = input.Split('\n');
+        Regex sensorRegex = new(@"^Sensor at x=(?<xs>-?\d+), y=(?<ys>-?\d+): closest beacon is at x=(?<xb>-?\d+), y=(?<yb>-?\d+)");
+        List<SensorAndBeacon> sensors = new();
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            Match match = sensorRegex.Match(line);
+            sensors.Add(new(int.Parse(match.Groups["xs"].Value), int.Parse(match.Groups["ys"].Value), 
+                int.Parse(match.Groups["xb"].Value), int.Parse(match.Groups["yb"].Value)));
+        }
+        int cantContainBeacon = 0;
+        for (int x = -3000000; x < 10000000; x++)
+        {
+            if (sensors.Any(s => DistanceToSensor(x, 2000000, s) <= s.Distance) 
+                && !sensors.Any(s => s.BeaconX == x && s.BeaconY == 2000000))
+            {
+                cantContainBeacon++;
+            }
+        }
+        Console.WriteLine($"{cantContainBeacon} positions can't contain beacons in row y=2000000.");
+        foreach (SensorAndBeacon sensor in sensors)
+        {
+            int distance = sensor.Distance + 1;
+            for (int dx = -distance; dx <= distance; dx++)
+            {
+                int dy0 = distance - Math.Abs(dx);
+                int dy1 = -(distance - Math.Abs(dx));
+                int x = sensor.SensorX + dx;
+                int y = sensor.SensorY + dy0;
+                if (!sensors.Any(s => DistanceToSensor(x, y, s) <= s.Distance))
+                {
+                    Console.WriteLine($"Found beacon at {x}, {y}!");
+                    Console.WriteLine($"Tuning frequency: {x * 4000000 + y}");
+                    return;
+                }
+                y = sensor.SensorY + dy1;
+                if (!sensors.Any(s => DistanceToSensor(x, y, s) <= s.Distance))
+                {
+                    Console.WriteLine($"Found beacon at {x}, {y}!");
+                    Console.WriteLine($"Tuning frequency: {(long)x * 4000000 + y}");
+                    return;
+                }
+            }
+            Console.WriteLine("Finished another sensor!");
+        }
     }
 }
