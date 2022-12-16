@@ -7,6 +7,7 @@ using AdventOfCode.DaySeven;
 using AdventOfCode.DayThirteen;
 using AdventOfCode.DayTwelve;
 using NCalc;
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 using Directory = AdventOfCode.DaySeven.Directory;
@@ -84,6 +85,9 @@ class Program
                 break;
             case 15:
                 DayFifteen(input);
+                break;
+            case 16:
+                DaySixteen(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -1145,5 +1149,82 @@ class Program
             }
             Console.WriteLine("Finished another sensor!");
         }
+    }
+
+    static void DaySixteen(string input)
+    {
+        static long BestResult(Dictionary<string, Valve> valvesLeft, Valve current, int minutesLeft)
+        {
+            if (minutesLeft <= 0) return 0;
+            long bestScore = current.FlowRate * minutesLeft;
+            foreach (var kvp in current.Ways.Where(x => valvesLeft.ContainsKey(x.Key) && x.Value + 1 <= minutesLeft))
+            {
+                long score = current.FlowRate * minutesLeft
+                    + BestResult(
+                        new(valvesLeft.Where(x => x.Key != kvp.Key)),
+                        valvesLeft[kvp.Key],
+                        minutesLeft - kvp.Value - 1);
+                if (score > bestScore) bestScore = score;
+            }
+            return bestScore;
+        }
+        static long BestWithElephant(Dictionary<string, Valve> valvesLeft, Valve current, int minutesLeft, Valve startValve, int startMinutes)
+        {
+            if (minutesLeft <= 0) return 0;
+            long bestScore = current.FlowRate * minutesLeft + BestResult(valvesLeft, startValve, startMinutes);
+            foreach (var kvp in current.Ways.Where(x => valvesLeft.ContainsKey(x.Key) && x.Value + 1 <= minutesLeft))
+            {
+                long score = current.FlowRate * minutesLeft
+                    + BestWithElephant(
+                        new(valvesLeft.Where(x => x.Key != kvp.Key)),
+                        valvesLeft[kvp.Key],
+                        minutesLeft - kvp.Value - 1,
+                        startValve, startMinutes);
+                if (score > bestScore) bestScore = score;
+            }
+            return bestScore;
+        }
+        string[] lines = input.Split('\n');
+        Regex pipeRegex = new(@"Valve (?<valve>[A-Z]{2}) has flow rate=(?<flow>\d+); tunnels? leads? to valves? ((?<toValve>[A-Z]{2}),? ?)+");
+        Dictionary<string, Valve> valves = new();
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            Match match = pipeRegex.Match(line);
+            Valve valve = new(match.Groups["valve"].Value, int.Parse(match.Groups["flow"].Value),
+                match.Groups["toValve"].Captures.Select(x => x.Value));
+            valves.Add(valve.Id, valve);
+        }
+        foreach (Valve valve in valves.Values)
+        {
+            Dictionary<string, int> distance = new() { { valve.Id, 0 } };
+            foreach (string s in valves.Keys) if (!distance.ContainsKey(s)) distance.Add(s, int.MaxValue);
+            Dictionary<string, string> previous = new();
+            Dictionary<string, bool> visited = new();
+            while (valves.Keys.Any(x => !visited.ContainsKey(x) || !visited[x]))
+            {
+                string current = valves.Keys.Where(x => !visited.ContainsKey(x) || !visited[x]).OrderBy(x => distance[x]).First();
+                visited[current] = true;
+                foreach (string neighbor in valves[current].TunnelsToValves)
+                {
+                    int newDistance = distance[current] + 1;
+                    if (newDistance < distance[neighbor])
+                    {
+                        distance[neighbor] = newDistance;
+                        previous[neighbor] = current;
+                    }
+                }
+            }
+            valve.Ways = new(distance.Where(x => x.Key != valve.Id));
+        }
+        valves = new(valves.Where(x => x.Value.FlowRate > 0 || x.Value.Id == "AA"));
+        foreach (Valve valve in valves.Values) valve.Ways = new(valve.Ways.Where(x => valves.ContainsKey(x.Key)));
+        int minutesLeft = 30;
+        string position = "AA";
+        long bestResult = BestResult(new(valves.Where(x => x.Key != position)), valves[position], minutesLeft);
+        Console.WriteLine($"Best result alone: {bestResult}");
+        minutesLeft = 26;
+        long bestWithElephant = BestWithElephant(new(valves.Where(x => x.Key != position)), valves[position], minutesLeft, valves[position], minutesLeft);
+        Console.WriteLine($"Best result with elephant: {bestWithElephant}");
     }
 }
