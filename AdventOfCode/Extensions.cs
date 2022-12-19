@@ -17,5 +17,29 @@ namespace AdventOfCode
         {
             return (tuple.Item1, tuple.Item2);
         }
+
+        public static T[][] DeepCopy<T>(this T[][] arr)
+        {
+            T[][] result = new T[arr.Length][];
+            for (int i = 0; i < arr.Length; i++)
+            {
+                result[i] = new T[arr[i].Length];
+                for (int j = 0; j < arr[i].Length; j++)
+                {
+                    result[i][j] = arr[i][j];
+                }
+            }
+            return result;
+        }
+
+        public static bool ContentEquals<T>(this T[] arr, T[] other) where T : struct
+        {
+            if (arr.Length != other.Length) return false;
+            for (int i = 0; i < arr.Length; i++)
+            {
+                if (!arr[i].Equals(other[i])) return false;
+            }
+            return true;
+        }
     }
 }
