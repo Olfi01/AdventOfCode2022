@@ -8,6 +8,7 @@ using AdventOfCode.DaySeven;
 using AdventOfCode.DaySeventeen;
 using AdventOfCode.DayThirteen;
 using AdventOfCode.DayTwelve;
+using AdventOfCode.DayTwenty;
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -98,6 +99,9 @@ class Program
                 break;
             case 19:
                 DayNineteen(input);
+                break;
+            case 20:
+                DayTwenty(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -1679,5 +1683,55 @@ class Program
             product *= mostGeodes;
         }
         Console.WriteLine($"The product of the first three blueprints in 32 minutes is {product}.");
+    }
+    
+    static void DayTwenty(string input)
+    {
+        static void Mix(List<MixingNumber> file)
+        {
+            foreach (MixingNumber number in file.OrderBy(x => x.OriginalIndex).ToImmutableList())
+            {
+                int index = file.IndexOf(number);
+                long newIndex = index + number.Value;
+                file.RemoveAt(index);
+                file.Insert(newIndex < 0 ? (int)(file.Count + (newIndex % file.Count)) : (int)(newIndex % file.Count), number);
+            }
+        }
+        string[] lines = input.Split('\n');
+        List<MixingNumber> file = new();
+        int index = 0;
+        MixingNumber? zero = null;
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            MixingNumber number = new(index++, int.Parse(line));
+            file.Add(number);
+            if (number.Value == 0) zero = number;
+        }
+        Mix(file);
+        if (zero == null) throw new ArgumentException("Zero is null!");
+        int zeroIdx = file.IndexOf(zero);
+        long thousand = file[(zeroIdx + 1000) % file.Count].Value;
+        long twoThousand = file[(zeroIdx + 2000) % file.Count].Value;
+        long threeThousand = file[(zeroIdx + 3000) % file.Count].Value;
+        Console.WriteLine($"Sum of three coordinate numbers is {thousand + twoThousand + threeThousand}.");
+        List<MixingNumber> file2 = new();
+        const long decryptionKey = 811589153;
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            MixingNumber number = new(index++, int.Parse(line) * decryptionKey);
+            file2.Add(number);
+            if (number.Value == 0) zero = number;
+        }
+        for (int i = 0; i < 10; i++)
+        {
+            Mix(file2);
+        }
+        int zeroIdx2 = file2.IndexOf(zero);
+        long thousand2 = file2[(zeroIdx2 + 1000) % file2.Count].Value;
+        long twoThousand2 = file2[(zeroIdx2 + 2000) % file2.Count].Value;
+        long threeThousand2 = file2[(zeroIdx2 + 3000) % file2.Count].Value;
+        Console.WriteLine($"Actual sum of three coordinate numbers is {thousand2 + twoThousand2 + threeThousand2}.");
     }
 }
