@@ -9,6 +9,9 @@ using AdventOfCode.DaySeventeen;
 using AdventOfCode.DayThirteen;
 using AdventOfCode.DayTwelve;
 using AdventOfCode.DayTwenty;
+using AdventOfCode.DayTwentyone;
+using AdventOfCode.DayTwentyThree;
+using AdventOfCode.DayTwentyTwo;
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -102,6 +105,15 @@ class Program
                 break;
             case 20:
                 DayTwenty(input);
+                break;
+            case 21:
+                DayTwentyOne(input);
+                break;
+            case 22:
+                DayTwentyTwo(input);
+                break;
+            case 23:
+                DayTwentyThree(input);
                 break;
             default:
                 throw new NotImplementedException("Haven't coded this day yet!");
@@ -1733,5 +1745,237 @@ class Program
         long twoThousand2 = file2[(zeroIdx2 + 2000) % file2.Count].Value;
         long threeThousand2 = file2[(zeroIdx2 + 3000) % file2.Count].Value;
         Console.WriteLine($"Actual sum of three coordinate numbers is {thousand2 + twoThousand2 + threeThousand2}.");
+    }
+
+    static void DayTwentyOne(string input)
+    {
+        string[] lines = input.Split('\n');
+        Dictionary<string, RiddleMonkey> monkeys = new();
+        void TryResolve(string name)
+        {
+            RiddleMonkey monkey = monkeys[name];
+            if (!monkey.Operation.HasValue) return;
+            try
+            {
+                long result = Resolve(name);
+                monkey.Number = result;
+            }
+            catch (ArgumentException) { }
+            TryResolve(monkey.Operation.Value.Left);
+            TryResolve(monkey.Operation.Value.Right);
+        }
+        long Resolve(string name)
+        {
+            RiddleMonkey monkey = monkeys[name];
+            if (monkey.Number.HasValue) return monkey.Number.Value;
+            return (monkey.Operation?.Op) switch
+            {
+                MathOperation.Plus => Resolve(monkey.Operation.Value.Left) + Resolve(monkey.Operation.Value.Right),
+                MathOperation.Minus => Resolve(monkey.Operation.Value.Left) - Resolve(monkey.Operation.Value.Right),
+                MathOperation.Times => Resolve(monkey.Operation.Value.Left) * Resolve(monkey.Operation.Value.Right),
+                MathOperation.DividedBy => Resolve(monkey.Operation.Value.Left) / Resolve(monkey.Operation.Value.Right),
+                _ => throw new ArgumentException(nameof(monkey.Operation)),
+            };
+        }
+        long ResolveBackward(string name, long shouldEqual)
+        {
+            RiddleMonkey monkey = monkeys[name];
+            if (monkey.Name == "humn") return shouldEqual;
+            if (!monkey.Operation.HasValue) throw new ArgumentException(nameof(monkey.Operation));
+            RiddleMonkey left = monkeys[monkey.Operation.Value.Left];
+            RiddleMonkey right = monkeys[monkey.Operation.Value.Right];
+            if (left.Number.HasValue)
+            {
+                return ResolveBackward(monkey.Operation.Value.Right, monkey.Operation.Value.Op switch
+                {
+                    MathOperation.Plus => shouldEqual - left.Number.Value,
+                    MathOperation.Minus => left.Number.Value - shouldEqual,
+                    MathOperation.Times => shouldEqual / left.Number.Value,
+                    MathOperation.DividedBy => left.Number.Value / shouldEqual,
+                    _ => throw new NotImplementedException()
+                });
+            }
+            else
+            {
+                if (!right.Number.HasValue) throw new NotImplementedException("Somehow this monkey has no number!");
+                return ResolveBackward(monkey.Operation.Value.Left, monkey.Operation.Value.Op switch
+                {
+                    MathOperation.Plus => shouldEqual - right.Number.Value,
+                    MathOperation.Minus => shouldEqual + right.Number.Value,
+                    MathOperation.Times => shouldEqual / right.Number.Value,
+                    MathOperation.DividedBy => shouldEqual * right.Number.Value,
+                    _ => throw new NotImplementedException()
+                });
+            }
+        }
+        foreach (string line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            RiddleMonkey monkey = new(line);
+            monkeys.Add(monkey.Name, monkey);
+        }
+        RiddleMonkey root = monkeys["root"];
+        Console.WriteLine($"Monkey root will yell {Resolve(root.Name)}.");
+        // damn elephants not speaking monkey!
+        RiddleMonkey humn = monkeys["humn"];
+        humn.BecomeHuman();
+        TryResolve(root.Name);
+        long shouldEqual;
+        if (!root.Operation.HasValue) throw new ArgumentException(nameof(root.Operation));
+        string resolveBackward = root.Operation.Value.Right;
+        try
+        {
+            shouldEqual = Resolve(root.Operation.Value.Left);
+        }
+        catch (ArgumentException)
+        {
+            shouldEqual = Resolve(root.Operation.Value.Right);
+            resolveBackward = root.Operation.Value.Left;
+        }
+        long myNumber = ResolveBackward(resolveBackward, shouldEqual);
+        Console.WriteLine($"I should yell the number {myNumber}.");
+    }
+
+    static void DayTwentyTwo(string input)
+    {
+        string[] blocks = input.Split("\n\n");
+        string[] mapStrings = blocks[0].Split('\n');
+        bool?[,] map = new bool?[mapStrings.Length,mapStrings.OrderByDescending(x => x.Length).First().Length];
+        string instructions = blocks[1];
+        for (int row = 0; row < mapStrings.Length; row++)
+        {
+            string rowString = mapStrings[row];
+            for (int col = 0; col < rowString.Length; col++)
+            {
+                switch (rowString[col])
+                {
+                    case '.':
+                        map[row, col] = false;
+                        break;
+                    case '#':
+                        map[row, col] = true;
+                        break;
+                }
+            }
+        }
+        (int Row, int Col) position = (0, mapStrings[0].IndexOf('.'));
+        Facing facing = Facing.Right;
+        Regex instructionRegex = new(@"(?<num>\d+)|(?<turn>[LR])");
+        MatchCollection matches = instructionRegex.Matches(instructions);
+        foreach (Match match in matches)
+        {
+            if (match.Groups.ContainsKey("num") && match.Groups["num"].Success)
+            {
+                int num = int.Parse(match.Groups["num"].Value);
+                for (int i = 0; i < num; i++)
+                {
+                    if (!map.MoveNext(facing, ref position)) break;
+                }
+            }
+            else if (match.Groups.ContainsKey("turn") && match.Groups["turn"].Success)
+            {
+                string turn = match.Groups["turn"].Value;
+                if (turn == "L") facing = facing.TurnLeft();
+                else facing = facing.TurnRight();
+            }
+        }
+        Console.WriteLine($"The password is {1000 * (position.Row + 1) + 4 * (position.Col + 1) + (int)facing}");
+
+        position = (0, mapStrings[0].IndexOf('.'));
+        facing = Facing.Right;
+        foreach (Match match in matches)
+        {
+            if (match.Groups.ContainsKey("num") && match.Groups["num"].Success)
+            {
+                int num = int.Parse(match.Groups["num"].Value);
+                for (int i = 0; i < num; i++)
+                {
+                    if (!map.MoveNextCube(ref facing, ref position)) break;
+                }
+            }
+            else if (match.Groups.ContainsKey("turn") && match.Groups["turn"].Success)
+            {
+                string turn = match.Groups["turn"].Value;
+                if (turn == "L") facing = facing.TurnLeft();
+                else facing = facing.TurnRight();
+            }
+            else
+            {
+                throw new NotImplementedException("Instruction Regex Failed");
+            }
+        }
+        Console.WriteLine($"The actual password is {1000 * (position.Row + 1) + 4 * (position.Col + 1) + (int)facing}");
+    }
+
+    static void DayTwentyThree(string input)
+    {
+        string[] lines = input.Split('\n');
+        List<Elf> elves = new();
+        for (int row = 0; row < lines.Length; row++)
+        {
+            string line = lines[row];
+            for (int col = 0; col < line.Length; col++)
+            {
+                char c = line[col];
+                if (c == '#')
+                {
+                    Elf elf = new(row, col);
+                    elves.Add(elf);
+                }
+            }
+        }
+        Console.Write("Computing round ");
+        (int cursorLeft, int cursorTop) = (Console.CursorLeft, Console.CursorTop);
+        for (int round = 1; round <= 100000; round++)
+        {
+            Console.SetCursorPosition(cursorLeft, cursorTop);
+            Console.WriteLine(round);
+            foreach (Elf elf in elves)
+            {
+                elf.ProposeMove(elves);
+            }
+            if (!elves.Any(x => x.Proposition.HasValue))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"The first round where no elf moved is round {round}.");
+                break;
+            }
+            foreach (Elf elf in elves)
+            {
+                if (elf.Proposition.HasValue && elves.Count(x => x.Proposition == elf.Proposition.Value) == 1)
+                {
+                    elf.Move();
+                }
+                else
+                {
+                    elf.DontMove();
+                }
+            }
+            foreach (Elf elf in elves)
+            {
+                elf.Proposition = null;
+            }
+            /*Console.Clear();
+            Console.SetCursorPosition(0, 0);
+            for (int row = elves.Select(x => x.Row).Min(); row <= elves.Select(x => x.Row).Max(); row++)
+            {
+                for (int col = elves.Select(x => x.Col).Min(); col <= elves.Select(x => x.Col).Max(); col++)
+                {
+                    if (elves.Any(x => x.Row == row && x.Col == col)) Console.Write('#');
+                    else Console.Write('.');
+                }
+                Console.WriteLine();
+            }
+            Console.ReadLine();*/
+            if (round == 10)
+            {
+                int minRow = elves.Select(x => x.Row).Min();
+                int maxRow = elves.Select(x => x.Row).Max();
+                int minCol = elves.Select(x => x.Col).Min();
+                int maxCol = elves.Select(x => x.Col).Max();
+                Console.WriteLine($"There are {(maxRow - minRow + 1) * (maxCol - minCol + 1) - elves.Count}" +
+                    $" free ground tiles in the rectangle after round 10.");
+            }
+        }
     }
 }
